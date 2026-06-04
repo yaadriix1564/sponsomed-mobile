@@ -1,36 +1,23 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Check } from 'lucide-react';
+import { Globe, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createPortal } from 'react-dom';
 
 const LANGS = [
-  { code: 'fr', flag: '🇫🇷' },
-  { code: 'en', flag: '🇬🇧' },
-  { code: 'ar', flag: '🇸🇦' },
-  { code: 'ro', flag: '🇷🇴' },
-  { code: 'it', flag: '🇮🇹' },
-  { code: 'pt', flag: '🇵🇹' },
-  { code: 'es', flag: '🇪🇸' },
-  { code: 'de', flag: '🇩🇪' },
+  { code: 'fr', flag: '🇫🇷', label: 'Français' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'ar', flag: '🇸🇦', label: 'العربية' },
+  { code: 'ro', flag: '🇷🇴', label: 'Română' },
+  { code: 'it', flag: '🇮🇹', label: 'Italiano' },
+  { code: 'pt', flag: '🇵🇹', label: 'Português' },
+  { code: 'es', flag: '🇪🇸', label: 'Español' },
+  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
 ];
 
 export default function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { i18n, t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const isRTL = i18n.language === 'ar';
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (btnRef.current && !btnRef.current.closest('[data-lang-switcher]')?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   const change = (code: string) => {
     i18n.changeLanguage(code);
@@ -39,12 +26,91 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
     setOpen(false);
   };
 
+  const modal = open ? createPortal(
+    // Portal renders outside the RTL tree — always in <body>
+    <div
+      dir="ltr"
+      style={{ position: 'fixed', inset: 0, zIndex: 9999,
+               display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+               background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
+      onClick={() => setOpen(false)}
+    >
+      <div
+        dir="ltr"
+        style={{
+          background: 'white',
+          borderRadius: '24px 24px 0 0',
+          width: '100%',
+          maxWidth: '480px',
+          paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+          animation: 'slideUp 0.22s ease',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div style={{ display:'flex', justifyContent:'center', paddingTop:'12px', paddingBottom:'4px' }}>
+          <div style={{ width:'40px', height:'4px', borderRadius:'2px', background:'#e2e8f0' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 8px' }}>
+          <p style={{ fontWeight:700, fontSize:'16px', color:'#0f172a' }}>{t('profile.language')}</p>
+          <button
+            onClick={() => setOpen(false)}
+            style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#f1f5f9',
+                     display:'flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer' }}
+          >
+            <X size={16} color="#64748b" />
+          </button>
+        </div>
+
+        {/* Lang list */}
+        <div style={{ padding:'4px 12px 8px' }}>
+          {LANGS.map(({ code, flag, label }) => {
+            const active = i18n.language === code;
+            return (
+              <button
+                key={code}
+                onClick={() => change(code)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '11px 12px', borderRadius: '16px', border: 'none', cursor: 'pointer',
+                  background: active ? '#eff6ff' : 'transparent',
+                  transition: 'background 0.15s',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '24px', lineHeight: 1, minWidth: '32px', textAlign: 'center' }}>{flag}</span>
+                <span style={{ flex: 1, fontSize: '15px', fontWeight: active ? 700 : 500,
+                               color: active ? '#1d4ed8' : '#334155' }}>
+                  {label}
+                </span>
+                {active && (
+                  <span style={{ width:'22px', height:'22px', borderRadius:'50%', background:'#1d4ed8',
+                                 display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Check size={12} color="white" strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    // data-lang-switcher isolates click detection; dir=ltr keeps internal layout stable
-    <div className="relative" data-lang-switcher dir="ltr">
+    <div dir="ltr">
       <button
-        ref={btnRef}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen(true)}
         className={cn(
           'flex items-center gap-1.5 rounded-2xl transition-all active:scale-90',
           compact
@@ -61,56 +127,7 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
         )}
       </button>
 
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-
-          {/* Dropdown — always anchored right in ltr context, never overflows */}
-          <div
-            dir="ltr"
-            className="absolute z-50 bg-white rounded-3xl overflow-hidden w-52 animate-scale-in"
-            style={{
-              top: '2.75rem',
-              right: 0,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-              border: '1px solid #f1f5f9',
-              // Prevent going off-screen on the left on small viewports
-              maxWidth: 'calc(100vw - 1rem)',
-            }}
-          >
-            <p className="px-4 pt-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              {t('profile.language')}
-            </p>
-
-            <div className="pb-2">
-              {LANGS.map(({ code, flag }) => {
-                const active = i18n.language === code;
-                return (
-                  <button
-                    key={code}
-                    onClick={() => change(code)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left',
-                      active ? 'bg-primary/5' : 'hover:bg-slate-50 active:bg-slate-100'
-                    )}
-                  >
-                    <span className="text-xl leading-none">{flag}</span>
-                    <span className={cn('flex-1 text-sm font-medium', active ? 'text-primary' : 'text-slate-700')}>
-                      {t(`lang.${code}`)}
-                    </span>
-                    {active && (
-                      <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                        <Check size={11} className="text-white" strokeWidth={3} />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
+      {modal}
     </div>
   );
 }
