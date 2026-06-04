@@ -11,6 +11,9 @@ import Messages from './pages/Messages';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Auth from './pages/Auth';
+import KYC from './pages/KYC';
+
+const NO_CHROME = ['/auth', '/kyc'];
 
 function AppInner() {
   const { i18n } = useTranslation();
@@ -21,9 +24,12 @@ function AppInner() {
     document.documentElement.lang = lang;
   }, [i18n.language]);
 
+  const path = window.location.pathname;
+  const hideChrome = NO_CHROME.some(p => path.startsWith(p));
+
   return (
     <div className="flex flex-col min-h-screen bg-surface">
-      <TopBar />
+      {!hideChrome && <TopBar />}
       <main className="flex-1 pb-20">
         <Suspense fallback={<div className="p-8 text-center text-slate-400">...</div>}>
           <Routes>
@@ -34,10 +40,11 @@ function AppInner() {
             <Route path="/dashboard"  element={<Dashboard />} />
             <Route path="/profile"    element={<Profile />} />
             <Route path="/auth"       element={<Auth />} />
+            <Route path="/kyc"        element={<KYC />} />
           </Routes>
         </Suspense>
       </main>
-      <BottomNav />
+      {!hideChrome && <BottomNav />}
     </div>
   );
 }
