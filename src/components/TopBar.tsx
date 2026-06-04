@@ -5,8 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
 
-// Logo servi depuis le repo principal (même Supabase, même projet)
-const LOGO_URL = 'https://raw.githubusercontent.com/yaadriix1564/bond-to-bright/main/public/favicon.png';
+// URL publique du logo dans Supabase Storage (bucket public du projet)
+// ⚠️ Remplace cette URL par celle de ton bucket Supabase : Storage > public > logo.png
+const SUPABASE_LOGO = 'https://sponsomed.com/favicon.png';
 
 export default function TopBar() {
   const { pathname } = useLocation();
@@ -20,14 +21,12 @@ export default function TopBar() {
     '/messages': t('nav.messages'),
     '/dashboard': t('nav.dashboard'),
     '/profile': t('nav.profile'),
-    '/auth': '',
   };
 
-  const isRoot = ['/', '/offers', '/messages', '/dashboard', '/profile', '/auth'].includes(pathname);
-  const title = TITLES[pathname] ?? t('app.name');
-  const isAuth = pathname === '/auth';
+  const isRoot = ['/', '/offers', '/messages', '/dashboard', '/profile'].includes(pathname);
+  const title  = TITLES[pathname] ?? t('app.name');
 
-  if (isAuth) return null;
+  if (pathname === '/auth' || pathname === '/kyc') return null;
 
   return (
     <header
@@ -35,6 +34,8 @@ export default function TopBar() {
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="flex items-center h-14 px-4 gap-3">
+
+        {/* Bouton retour OU logo */}
         {!isRoot ? (
           <button
             onClick={() => navigate(-1)}
@@ -43,22 +44,25 @@ export default function TopBar() {
             <ArrowLeft size={20} className="text-slate-700" />
           </button>
         ) : (
-          /* Logo cliquable — retour accueil */
-          <button onClick={() => navigate('/')} className="flex items-center gap-2.5 active:opacity-70 transition-opacity">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2.5 active:opacity-70 transition-opacity"
+          >
             <img
-              src={LOGO_URL}
+              src={SUPABASE_LOGO}
               alt="SponsoMed"
               className="h-8 w-8 rounded-xl object-cover"
               onError={e => {
-                // fallback si CDN inaccessible
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = 'flex';
+                const img = e.currentTarget as HTMLImageElement;
+                img.style.display = 'none';
+                const fb = document.getElementById('logo-fallback');
+                if (fb) fb.style.display = 'flex';
               }}
             />
-            {/* Fallback lettre */}
             <div
-              className="h-8 w-8 rounded-xl bg-primary items-center justify-center hidden"
-              aria-hidden
+              id="logo-fallback"
+              className="h-8 w-8 rounded-xl bg-primary items-center justify-center"
+              style={{ display: 'none' }}
             >
               <span className="text-white text-xs font-bold">S</span>
             </div>
@@ -70,13 +74,14 @@ export default function TopBar() {
           </button>
         )}
 
-        {/* Titre page (hors accueil) */}
-        {title && (
+        {/* Titre page */}
+        {title ? (
           <span className={cn('font-display font-bold text-slate-900 flex-1', !isRoot ? 'text-base' : 'text-lg')}>
             {title}
           </span>
+        ) : (
+          <span className="flex-1" />
         )}
-        {!title && <span className="flex-1" />}
 
         <LanguageSwitcher compact />
 
