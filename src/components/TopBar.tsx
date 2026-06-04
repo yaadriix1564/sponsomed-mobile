@@ -5,11 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import LanguageSwitcher from './LanguageSwitcher';
 
-// URL publique du logo dans Supabase Storage (bucket public du projet)
-// ⚠️ Remplace cette URL par celle de ton bucket Supabase : Storage > public > logo.png
-const SUPABASE_LOGO = 'https://sponsomed.com/favicon.png';
+const LOGO_URL = 'https://sponsomed.com/favicon.png';
 
-export default function TopBar() {
+export default function TopBar({ unreadCount = 0 }: { unreadCount?: number }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -21,10 +19,11 @@ export default function TopBar() {
     '/messages': t('nav.messages'),
     '/dashboard': t('nav.dashboard'),
     '/profile': t('nav.profile'),
+    '/notifications': 'Notifications',
   };
 
   const isRoot = ['/', '/offers', '/messages', '/dashboard', '/profile'].includes(pathname);
-  const title  = TITLES[pathname] ?? t('app.name');
+  const title = TITLES[pathname] ?? t('app.name');
 
   if (pathname === '/auth' || pathname === '/kyc') return null;
 
@@ -34,38 +33,16 @@ export default function TopBar() {
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="flex items-center h-14 px-4 gap-3">
-
-        {/* Bouton retour OU logo */}
         {!isRoot ? (
-          <button
-            onClick={() => navigate(-1)}
-            className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-slate-100 active:scale-90 transition-all"
-          >
+          <button onClick={() => navigate(-1)}
+            className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-slate-100 active:scale-90 transition-all">
             <ArrowLeft size={20} className="text-slate-700" />
           </button>
         ) : (
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2.5 active:opacity-70 transition-opacity"
-          >
-            <img
-              src={SUPABASE_LOGO}
-              alt="SponsoMed"
-              className="h-8 w-8 rounded-xl object-cover"
-              onError={e => {
-                const img = e.currentTarget as HTMLImageElement;
-                img.style.display = 'none';
-                const fb = document.getElementById('logo-fallback');
-                if (fb) fb.style.display = 'flex';
-              }}
+          <button onClick={() => navigate('/')} className="flex items-center gap-2.5 active:opacity-70 transition-opacity">
+            <img src={LOGO_URL} alt="SponsoMed" className="h-8 w-8 rounded-xl object-cover"
+              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
             />
-            <div
-              id="logo-fallback"
-              className="h-8 w-8 rounded-xl bg-primary items-center justify-center"
-              style={{ display: 'none' }}
-            >
-              <span className="text-white text-xs font-bold">S</span>
-            </div>
             {pathname === '/' && (
               <span className="font-display font-extrabold text-lg text-slate-900 tracking-tight">
                 Sponso<span className="text-primary">Med</span>
@@ -74,21 +51,21 @@ export default function TopBar() {
           </button>
         )}
 
-        {/* Titre page */}
         {title ? (
-          <span className={cn('font-display font-bold text-slate-900 flex-1', !isRoot ? 'text-base' : 'text-lg')}>
-            {title}
-          </span>
-        ) : (
-          <span className="flex-1" />
-        )}
+          <span className={cn('font-display font-bold text-slate-900 flex-1', !isRoot ? 'text-base' : 'text-lg')}>{title}</span>
+        ) : <span className="flex-1" />}
 
         <LanguageSwitcher compact />
 
         {user && isRoot && (
-          <button className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-slate-100 active:scale-90 transition-all relative">
+          <button onClick={() => navigate('/notifications')}
+            className="w-9 h-9 flex items-center justify-center rounded-2xl hover:bg-slate-100 active:scale-90 transition-all relative">
             <Bell size={20} className="text-slate-600" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         )}
       </div>
