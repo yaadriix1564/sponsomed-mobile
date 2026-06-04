@@ -61,12 +61,11 @@ export default function Auth() {
   };
 
   const features = [
-    { icon: Shield, label: { fr:'Centres médicaux partenaires', en:'Partner medical centers', ro:'Centre medicale partenere', it:'Centri medici partner', pt:'Centros médicos parceiros', ar:'مراكز طبية شريكة', es:'Centros médicos asociados', de:'Partnerkliniken' }},
+    { icon: Shield,        label: { fr:'Centres médicaux partenaires', en:'Partner medical centers', ro:'Centre medicale partenere', it:'Centri medici partner', pt:'Centros médicos parceiros', ar:'مراكز طبية شريكة', es:'Centros médicos asociados', de:'Partnerkliniken' }},
     { icon: GraduationCap, label: { fr:'Financements sécurisés', en:'Secure funding', ro:'Finanțări securizate', it:'Finanziamenti sicuri', pt:'Financiamentos seguros', ar:'تمويلات آمنة', es:'Financiaciones seguras', de:'Sichere Finanzierungen' }},
-    { icon: CreditCard, label: { fr:'Paiements Stripe Escrow', en:'Stripe Escrow payments', ro:'Plăți Stripe Escrow', it:'Pagamenti Stripe Escrow', pt:'Pagamentos Stripe Escrow', ar:'مدفوعات Stripe آمنة', es:'Pagos Stripe Escrow', de:'Stripe Escrow-Zahlungen' }},
+    { icon: CreditCard,    label: { fr:'Paiements Stripe Escrow', en:'Stripe Escrow payments', ro:'Plăți Stripe Escrow', it:'Pagamenti Stripe Escrow', pt:'Pagamentos Stripe Escrow', ar:'مدفوعات Stripe آمنة', es:'Pagos Stripe Escrow', de:'Stripe Escrow-Zahlungen' }},
   ];
 
-  /* ── Lang bottom-sheet portal ─────────────────── */
   const langModal = langOpen ? createPortal(
     <div dir="ltr" style={{ position:'fixed', inset:0, zIndex:9999,
       display:'flex', alignItems:'flex-end', justifyContent:'center',
@@ -79,9 +78,7 @@ export default function Auth() {
         <div style={{ display:'flex', justifyContent:'center', paddingTop:12, paddingBottom:4 }}>
           <div style={{ width:40, height:4, borderRadius:2, background:'#e2e8f0' }} />
         </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 20px 8px' }}>
-          <p style={{ fontWeight:700, fontSize:16, color:'#0f172a', margin:0 }}>{t('profile.language')}</p>
-        </div>
+        <p style={{ fontWeight:700, fontSize:16, color:'#0f172a', margin:'10px 20px 8px' }}>{t('profile.language')}</p>
         <div style={{ padding:'4px 12px 12px' }}>
           {LANGS.map(({ code, flag, label }) => {
             const active = lang === code;
@@ -89,11 +86,10 @@ export default function Auth() {
               <button key={code} onClick={() => changeLang(code)} style={{
                 width:'100%', display:'flex', alignItems:'center', gap:14,
                 padding:'11px 12px', borderRadius:16, border:'none', cursor:'pointer',
-                background: active ? '#eff6ff' : 'transparent', textAlign:'left',
-              }}>
+                background: active ? '#eff6ff' : 'transparent', textAlign:'left' }}>
                 <span style={{ fontSize:24, minWidth:32, textAlign:'center' }}>{flag}</span>
-                <span style={{ flex:1, fontSize:15, fontWeight: active?700:500,
-                  color: active?'#1d4ed8':'#334155' }}>{label}</span>
+                <span style={{ flex:1, fontSize:15, fontWeight:active?700:500,
+                  color:active?'#1d4ed8':'#334155' }}>{label}</span>
                 {active && (
                   <span style={{ width:22, height:22, borderRadius:'50%', background:'#1d4ed8',
                     display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -105,7 +101,6 @@ export default function Auth() {
           })}
         </div>
       </div>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
     </div>,
     document.body
   ) : null;
@@ -115,25 +110,20 @@ export default function Auth() {
       style={{ minHeight:'100dvh', display:'flex', flexDirection:'column',
                background:'#f8fafc', overflowX:'hidden' }}>
 
-      {/* ── TOP BAR ─────────────────────────────── */}
+      {/* TOP BAR */}
       <div style={{
         position:'fixed', top:0, left:0, right:0, zIndex:100,
         display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:`env(safe-area-inset-top,0px) 16px 0`,
         height:'calc(56px + env(safe-area-inset-top,0px))',
       }}>
-        {/* ⭐ Logo = bouton retour accueil */}
-        <button
-          onClick={() => navigate('/')}
-          style={{ display:'flex', alignItems:'center', gap:8,
-            background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)',
-            border:'1px solid rgba(255,255,255,0.25)',
-            borderRadius:14, padding:'7px 12px 7px 8px',
-            cursor:'pointer', transition:'transform 0.15s',
-          }}
-          onMouseDown={e => (e.currentTarget.style.transform='scale(0.95)')}
-          onMouseUp={e   => (e.currentTarget.style.transform='scale(1)')}
-        >
+        {/* Logo → accueil */}
+        <button onClick={() => navigate('/')} style={{
+          display:'flex', alignItems:'center', gap:8,
+          background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)',
+          border:'1px solid rgba(255,255,255,0.25)',
+          borderRadius:14, padding:'7px 12px 7px 8px', cursor:'pointer',
+        }}>
           <div style={{ width:28, height:28, borderRadius:8, background:'white',
             display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <Stethoscope size={15} color="#1d4ed8" />
@@ -141,28 +131,19 @@ export default function Auth() {
           <span style={{ fontWeight:800, fontSize:15, color:'white', letterSpacing:'-0.3px' }}>SponsoMed</span>
         </button>
 
-        {/* 🌍 Bouton langue visible — pill avec drapeau + code */}
-        <button
-          dir="ltr"
-          onClick={() => setLangOpen(true)}
-          style={{
-            display:'flex', alignItems:'center', gap:7,
-            background:'rgba(255,255,255,0.18)', backdropFilter:'blur(8px)',
-            border:'1px solid rgba(255,255,255,0.3)',
-            borderRadius:14, padding:'7px 12px',
-            cursor:'pointer', transition:'transform 0.15s',
-          }}
-          onMouseDown={e => (e.currentTarget.style.transform='scale(0.95)')}
-          onMouseUp={e   => (e.currentTarget.style.transform='scale(1)')}
-        >
+        {/* Bouton langue — drapeau seul, pill visible */}
+        <button dir="ltr" onClick={() => setLangOpen(true)} style={{
+          display:'flex', alignItems:'center', gap:6,
+          background:'rgba(255,255,255,0.18)', backdropFilter:'blur(8px)',
+          border:'1px solid rgba(255,255,255,0.3)',
+          borderRadius:14, padding:'7px 12px', cursor:'pointer',
+        }}>
           <Globe size={15} color="white" />
-          <span style={{ fontSize:13, fontWeight:700, color:'white', letterSpacing:'0.5px' }}>
-            {currentLang.flag} {lang.toUpperCase()}
-          </span>
+          <span style={{ fontSize:20, lineHeight:1 }}>{currentLang.flag}</span>
         </button>
       </div>
 
-      {/* ── HERO ──────────────────────────────── */}
+      {/* HERO */}
       <div style={{
         background:'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #0ea5e9 100%)',
         paddingTop:'calc(56px + env(safe-area-inset-top,0px) + 20px)',
@@ -171,13 +152,10 @@ export default function Auth() {
       }}>
         <div style={{ position:'absolute', right:'-48px', top:'-48px', width:'180px', height:'180px', borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
         <div style={{ position:'absolute', left:'-32px', bottom:'-32px', width:'120px', height:'120px', borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
-
         <h1 style={{ fontSize:'26px', fontWeight:800, lineHeight:1.2, margin:'0 0 6px', letterSpacing:'-0.5px' }}>
           {mode === 'login' ? t('auth.welcomeBack') : t('auth.join')}
         </h1>
-        <p style={{ fontSize:'14px', color:'rgba(255,255,255,0.7)', margin:'0 0 20px' }}>
-          {t('auth.tagline')}
-        </p>
+        <p style={{ fontSize:'14px', color:'rgba(255,255,255,0.7)', margin:'0 0 20px' }}>{t('auth.tagline')}</p>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {features.map(({ icon: Icon, label }) => (
             <div key={Object.values(label)[0]} style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -193,12 +171,11 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* ── FORM CARD ──────────────────────────── */}
+      {/* FORM */}
       <div style={{ flex:1, background:'white', borderRadius:'24px 24px 0 0',
         marginTop:'-16px', padding:'28px 20px 40px',
         display:'flex', flexDirection:'column', gap:16 }}>
 
-        {/* Tabs */}
         <div style={{ display:'flex', background:'#f1f5f9', borderRadius:16, padding:4, gap:4 }}>
           {(['login','signup'] as const).map(m => (
             <button key={m} onClick={() => { setMode(m); setError(''); setSuccess(''); }}
@@ -221,12 +198,9 @@ export default function Auth() {
           </div>
         )}
 
-        {/* Email */}
         <div style={{ position:'relative' }}>
           <div style={{ position:'absolute', left:lang==='ar'?'auto':'14px', right:lang==='ar'?'14px':'auto',
-            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
-            <Mail size={16} color="#94a3b8" />
-          </div>
+            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><Mail size={16} color="#94a3b8" /></div>
           <input type="email" placeholder={t('auth.email')} value={email}
             onChange={e => setEmail(e.target.value)} autoComplete="email" dir="ltr"
             style={{ width:'100%', boxSizing:'border-box',
@@ -237,12 +211,9 @@ export default function Auth() {
             onBlur={e  => e.target.style.borderColor='#e2e8f0'} />
         </div>
 
-        {/* Password */}
         <div style={{ position:'relative' }}>
           <div style={{ position:'absolute', left:lang==='ar'?'auto':'14px', right:lang==='ar'?'14px':'auto',
-            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
-            <Lock size={16} color="#94a3b8" />
-          </div>
+            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><Lock size={16} color="#94a3b8" /></div>
           <input type={show?'text':'password'} placeholder={t('auth.password')} value={password}
             onChange={e => setPassword(e.target.value)}
             autoComplete={mode==='login'?'current-password':'new-password'}
@@ -266,14 +237,12 @@ export default function Auth() {
           </div>
         )}
 
-        {/* Submit */}
         <button onClick={handle} disabled={loading || !email || !password}
           style={{ width:'100%', padding:15,
             background: loading||!email||!password ? '#93c5fd' : 'linear-gradient(135deg,#1d4ed8,#0ea5e9)',
             color:'white', border:'none', borderRadius:16, cursor:'pointer',
             fontSize:16, fontWeight:700, display:'flex', alignItems:'center',
-            justifyContent:'center', gap:8,
-            boxShadow:'0 4px 16px rgba(29,78,216,0.3)' }}>
+            justifyContent:'center', gap:8, boxShadow:'0 4px 16px rgba(29,78,216,0.3)' }}>
           {loading
             ? <span style={{ width:20, height:20, border:'2px solid white', borderTopColor:'transparent',
                 borderRadius:'50%', display:'inline-block', animation:'spin 0.7s linear infinite' }} />

@@ -41,11 +41,23 @@ export default function Home() {
         <p className="text-white/80 text-sm mt-1 mb-4">{t('home.hero')}</p>
         {!user ? (
           <div className="flex gap-2">
-            <button onClick={() => navigate('/auth')} className="bg-white text-primary font-bold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform">{t('common.start')}</button>
-            <button onClick={() => navigate('/offers')} className="bg-white/20 text-white font-semibold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform">{t('nav.offers')}</button>
+            <button
+              onClick={() => navigate('/auth')}
+              className="bg-white text-primary font-bold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform"
+            >
+              {t('auth.signIn')}
+            </button>
+            <button
+              onClick={() => navigate('/auth?mode=signup')}
+              className="bg-white/20 text-white font-semibold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform"
+            >
+              {t('auth.signUp')}
+            </button>
           </div>
         ) : (
-          <button onClick={() => navigate('/dashboard')} className="bg-white text-primary font-bold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform">{t('nav.dashboard')} →</button>
+          <button onClick={() => navigate('/dashboard')} className="bg-white text-primary font-bold text-sm px-4 py-2.5 rounded-2xl active:scale-95 transition-transform">
+            {t('nav.dashboard')} →
+          </button>
         )}
       </div>
 
