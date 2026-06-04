@@ -1,16 +1,19 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Settings, Shield, Bell, ChevronRight, User } from 'lucide-react';
-
-const MENU = [
-  { icon: Settings, label: 'Paramètres du compte', sub: 'Modifier vos informations' },
-  { icon: Bell,     label: 'Notifications',         sub: 'Gérer les alertes' },
-  { icon: Shield,   label: 'Confidentialité',        sub: 'Données et sécurité' },
-];
+import { LogOut, Settings, Shield, Bell, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const MENU = [
+    { icon: Settings, label: t('profile.accountSettings'), sub: 'email & mot de passe' },
+    { icon: Bell,     label: t('profile.notifications'),   sub: 'push & email' },
+    { icon: Shield,   label: t('profile.privacy'),         sub: 'RGPD' },
+  ];
 
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
@@ -26,8 +29,17 @@ export default function Profile() {
         <div>
           <p className="font-display font-bold text-slate-900 text-lg">{user?.email?.split('@')[0]}</p>
           <p className="text-sm text-slate-500 mt-0.5">{user?.email}</p>
-          <span className="badge bg-primary/10 text-primary mt-1 inline-block">Étudiant</span>
+          <span className="badge bg-primary/10 text-primary mt-1 inline-block">{t('profile.student')}</span>
         </div>
+      </div>
+
+      {/* Language */}
+      <div className="card p-4 flex items-center justify-between">
+        <div>
+          <p className="font-semibold text-slate-900 text-sm">{t('profile.language')}</p>
+          <p className="text-xs text-slate-400">EN · FR · RO · IT · PT · AR · ES · DE</p>
+        </div>
+        <LanguageSwitcher />
       </div>
 
       {/* Menu */}
@@ -51,7 +63,7 @@ export default function Profile() {
         <div className="w-9 h-9 rounded-2xl bg-red-50 flex items-center justify-center shrink-0">
           <LogOut size={17} className="text-red-500" />
         </div>
-        <span className="font-semibold text-sm">Se déconnecter</span>
+        <span className="font-semibold text-sm">{t('profile.logout')}</span>
       </button>
     </div>
   );

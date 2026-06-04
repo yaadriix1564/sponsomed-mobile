@@ -1,25 +1,27 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, MessageSquare, LayoutDashboard, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-
-const TABS_PUBLIC = [
-  { icon: Home,   label: 'Accueil', path: '/' },
-  { icon: Search, label: 'Offres',  path: '/offers' },
-];
-const TABS_AUTH = [
-  { icon: Home,            label: 'Accueil',   path: '/' },
-  { icon: Search,          label: 'Offres',    path: '/offers' },
-  { icon: MessageSquare,   label: 'Messages',  path: '/messages' },
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: User,            label: 'Profil',    path: '/profile' },
-];
 
 export default function BottomNav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   if (pathname === '/auth') return null;
+
+  const TABS_PUBLIC = [
+    { icon: Home,   label: t('nav.home'),   path: '/' },
+    { icon: Search, label: t('nav.offers'), path: '/offers' },
+  ];
+  const TABS_AUTH = [
+    { icon: Home,            label: t('nav.home'),      path: '/' },
+    { icon: Search,          label: t('nav.offers'),    path: '/offers' },
+    { icon: MessageSquare,   label: t('nav.messages'),  path: '/messages' },
+    { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/dashboard' },
+    { icon: User,            label: t('nav.profile'),   path: '/profile' },
+  ];
   const tabs = user ? TABS_AUTH : TABS_PUBLIC;
   const isActive = (p: string) => p === '/' ? pathname === '/' : pathname.startsWith(p);
 
@@ -35,10 +37,7 @@ export default function BottomNav() {
             <button
               key={path}
               onClick={() => navigate(path)}
-              className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90',
-                active ? 'text-primary' : 'text-slate-400'
-              )}
+              className={cn('flex-1 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90', active ? 'text-primary' : 'text-slate-400')}
             >
               <span className={cn('flex items-center justify-center w-10 h-7 rounded-2xl transition-all', active && 'bg-primary/10')}>
                 <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
