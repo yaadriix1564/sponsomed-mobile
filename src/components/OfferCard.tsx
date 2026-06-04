@@ -1,5 +1,6 @@
 import { MapPin, Euro, Clock, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 interface Offer {
@@ -16,6 +17,10 @@ interface Offer {
 
 export default function OfferCard({ offer, className }: { offer: Offer; className?: string }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const isActive = offer.status === 'active' || offer.status === 'published';
+
   return (
     <div
       onClick={() => navigate(`/offers/${offer.id}`)}
@@ -23,26 +28,24 @@ export default function OfferCard({ offer, className }: { offer: Offer; classNam
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-display font-bold text-slate-900 text-base leading-tight truncate">{offer.title ?? 'Offre sans titre'}</p>
+          <p className="font-display font-bold text-slate-900 text-base leading-tight truncate">{offer.title ?? '—'}</p>
           <p className="text-sm text-slate-500 mt-0.5 truncate">{offer.center_name ?? offer.clinic_name ?? '—'}</p>
         </div>
-        <span className={cn('badge shrink-0',
-          offer.status === 'active' || offer.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-        )}>
-          {offer.status === 'active' || offer.status === 'published' ? 'Actif' : (offer.status ?? '—')}
+        <span className={cn('badge shrink-0', isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
+          {isActive ? t('nav.offers') : (offer.status ?? '—')}
         </span>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {offer.location && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><MapPin size={12} className="text-primary" />{offer.location}</span>}
-        {offer.specialty && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><Stethoscope size={12} className="text-accent" />{offer.specialty}</span>}
-        {offer.duration_years && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><Clock size={12} className="text-slate-400" />{offer.duration_years} ans</span>}
+        {offer.location      && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><MapPin size={12} className="text-primary" />{offer.location}</span>}
+        {offer.specialty     && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><Stethoscope size={12} className="text-accent" />{offer.specialty}</span>}
+        {offer.duration_years && <span className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl"><Clock size={12} className="text-slate-400" />{offer.duration_years} {t('offer.years')}</span>}
       </div>
 
       {offer.amount && (
         <div className="flex items-center justify-between pt-1">
           <div>
-            <p className="label">Montant</p>
+            <p className="label">{t('offer.amount')}</p>
             <p className="font-display font-bold text-primary text-lg">{offer.amount.toLocaleString('fr-FR')} €</p>
           </div>
           <div className="w-9 h-9 rounded-2xl bg-primary flex items-center justify-center">

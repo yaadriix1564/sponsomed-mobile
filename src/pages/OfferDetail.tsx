@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Stethoscope, Clock, Euro, Building2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Euro, Clock, Stethoscope, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -8,88 +9,91 @@ export default function OfferDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [offer, setOffer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!id) return;
     supabase.from('offers').select('*').eq('id', id).single()
-      .then(({ data }) => { setOffer(data); setLoading(false); });
+      .then(({ data, error: e }) => {
+        if (e) setError(e.message);
+        setOffer(data);
+        setLoading(false);
+      });
   }, [id]);
 
-  if (loading) return (
-    <div className="page px-4 py-6 space-y-4">
-      {Array.from({ length: 4 }).map((_, i) => <div key={i} className="card h-20 animate-pulse bg-slate-100" />)}
-    </div>
-  );
-  if (!offer) return (
-    <div className="page flex flex-col items-center justify-center py-20">
-      <p className="text-slate-500">Offre introuvable</p>
-    </div>
-  );
+  const apply = async () => {
+    if (!user) { navigate('/auth'); return; }
+    setApplying(true);
+    const { error: e } = await supabase.from('applications').insert({ student_id: user.id, offer_id: id, status: 'pending' });
+    if (e) setError(e.message);
+    else setDone(true);
+    setApplying(false);
+  };
+
+  if (loading) return <div className="page px-4 py-5 space-y-4">{Array.from({length:4}).map((_,i)=><div key={i} className="card h-24 animate-pulse bg-slate-100" />)}</div>;
+  if (!offer)  return <div className="page px-4 py-10 text-center"><p className="text-slate-400">{t('offer.notFound')}</p></div>;
 
   return (
-    <div className="page px-4 py-5 space-y-4 pb-24">
-      {/* Hero card */}
-      <div className="bg-gradient-to-br from-primary to-accent rounded-3xl p-5 text-white">
-        <span className="text-white/70 text-xs font-semibold uppercase tracking-widest">{offer.specialty}</span>
-        <h1 className="font-display font-extrabold text-xl mt-1 leading-tight">{offer.title}</h1>
-        <p className="text-white/80 text-sm mt-1">{offer.center_name}</p>
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-white/60 text-xs">Financement</p>
-            <p className="font-display font-extrabold text-3xl">{offer.amount?.toLocaleString('fr-FR')} €</p>
-          </div>
-          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl">{offer.duration_years} ans</span>
+    <div className="page px-4 py-5 space-y-4">
+      <div className="card p-5 space-y-2">
+        <h1 className="font-display font-extrabold text-slate-900 text-xl">{offer.title}</h1>
+        <p className="text-sm text-slate-500">{offer.center_name ?? offer.clinic_name}</p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {offer.location  && <span className="flex items-center gap-1 text-xs bg-slate-50 px-2.5 py-1.5 rounded-xl text-slate-600"><MapPin size={12} className="text-primary" />{offer.location}</span>}
+          {offer.specialty && <span className="flex items-center gap-1 text-xs bg-slate-50 px-2.5 py-1.5 rounded-xl text-slate-600"><Stethoscope size={12} className="text-accent" />{offer.specialty}</span>}
+          {offer.duration_years && <span className="flex items-center gap-1 text-xs bg-slate-50 px-2.5 py-1.5 rounded-xl text-slate-600"><Clock size={12} />{offer.duration_years} {t('offer.years')}</span>}
         </div>
       </div>
 
-      {/* Info chips */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { icon: MapPin,      val: offer.location },
-          { icon: Stethoscope, val: offer.specialty },
-          { icon: Clock,       val: `${offer.duration_years} ans d'engagement` },
-          { icon: Building2,   val: offer.center_name },
-        ].map(({ icon: Icon, val }) => val && (
-          <span key={val} className="flex items-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-100 px-3 py-2 rounded-2xl shadow-sm">
-            <Icon size={13} className="text-primary" />{val}
-          </span>
-        ))}
-      </div>
+      {offer.amount && (
+        <div className="card p-4 flex items-center justify-between">
+          <div>
+            <p className="label">{t('offer.amount')}</p>
+            <p className="font-display font-extrabold text-primary text-2xl">{offer.amount.toLocaleString('fr-FR')} €</p>
+          </div>
+          <div className="w-12 h-12 rounded-3xl bg-primary flex items-center justify-center">
+            <Euro size={22} className="text-white" />
+          </div>
+        </div>
+      )}
 
-      {/* Description */}
       {offer.description && (
-        <div className="card p-4">
-          <p className="label mb-2">Description</p>
+        <div className="card p-4 space-y-1">
+          <p className="label">{t('offer.description')}</p>
           <p className="text-sm text-slate-700 leading-relaxed">{offer.description}</p>
         </div>
       )}
 
-      {/* Conditions */}
-      <div className="card p-4 space-y-2">
-        <p className="label mb-1">Conditions</p>
-        {[
-          'Étudiant en médecine, dentaire ou paramédical',
-          'Engagement post-diplôme dans le centre',
-          'Paiement sécurisé via Stripe Escrow',
-          '100% gratuit pour les étudiants',
-        ].map(c => (
-          <div key={c} className="flex items-start gap-2">
-            <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-            <span className="text-sm text-slate-700">{c}</span>
-          </div>
-        ))}
-      </div>
+      {offer.conditions && (
+        <div className="card p-4 space-y-1">
+          <p className="label">{t('offer.conditions')}</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{offer.conditions}</p>
+        </div>
+      )}
 
-      {/* CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-slate-100" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
-        {user ? (
-          <button className="btn-primary w-full text-center">Postuler à cette offre</button>
-        ) : (
-          <button onClick={() => navigate('/auth')} className="btn-primary w-full text-center">Se connecter pour postuler</button>
-        )}
-      </div>
+      {error && (
+        <div className="card p-3 bg-red-50 border border-red-100 flex items-center gap-2">
+          <AlertCircle size={16} className="text-red-500" />
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
+
+      {done ? (
+        <div className="card p-4 bg-emerald-50 border border-emerald-100 text-center">
+          <p className="font-semibold text-emerald-700">✅ {t('offer.apply')} !</p>
+        </div>
+      ) : (
+        <button onClick={apply} disabled={applying} className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 disabled:opacity-50">
+          {applying
+            ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : user ? t('offer.apply') : t('offer.loginApply')
+          }
+        </button>
+      )}
     </div>
   );
 }
