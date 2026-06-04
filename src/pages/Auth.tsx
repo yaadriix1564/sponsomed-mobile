@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Stethoscope, ArrowRight, CheckCircle2, Shield, GraduationCap, CreditCard, Globe } from 'lucide-react';
+import {
+  Mail, Lock, Eye, EyeOff, Stethoscope, ArrowRight,
+  CheckCircle2, Shield, GraduationCap, CreditCard, Globe,
+  ChevronLeft, User, Building2, MapPin, Phone, Globe2, FileText
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 
@@ -16,11 +20,51 @@ const LANGS = [
   { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
 ];
 
+type Step = 'auth' | 'role' | 'profile_student' | 'profile_center';
+
+const inputStyle = (focused: boolean) => ({
+  width: '100%', boxSizing: 'border-box' as const,
+  padding: '13px 14px 13px 44px',
+  borderRadius: 14, fontSize: 15, color: '#0f172a', background: '#f8fafc',
+  outline: 'none', transition: 'border 0.15s',
+  border: `1.5px solid ${focused ? '#1d4ed8' : '#e2e8f0'}`,
+});
+
+const plainInputStyle = (focused: boolean) => ({
+  width: '100%', boxSizing: 'border-box' as const,
+  padding: '13px 14px',
+  borderRadius: 14, fontSize: 15, color: '#0f172a', background: '#f8fafc',
+  outline: 'none', transition: 'border 0.15s',
+  border: `1.5px solid ${focused ? '#1d4ed8' : '#e2e8f0'}`,
+});
+
+function Field({ icon: Icon, placeholder, value, onChange, type = 'text', dir = 'ltr' }: any) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ position: 'relative' }}>
+      {Icon && <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><Icon size={16} color="#94a3b8" /></div>}
+      <input type={type} placeholder={placeholder} value={value} onChange={onChange} dir={dir}
+        style={Icon ? inputStyle(focused) : plainInputStyle(focused)}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+    </div>
+  );
+}
+
+function TextArea({ placeholder, value, onChange }: any) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <textarea placeholder={placeholder} value={value} onChange={onChange} rows={4}
+      style={{ ...plainInputStyle(focused), resize: 'none', fontFamily: 'inherit' }}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+  );
+}
+
 export default function Auth() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [step, setStep]         = useState<Step>('auth');
+  const [mode, setMode]         = useState<'login' | 'signup'>('login');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow]         = useState(false);
@@ -28,6 +72,30 @@ export default function Auth() {
   const [error, setError]       = useState('');
   const [success, setSuccess]   = useState('');
   const [langOpen, setLangOpen] = useState(false);
+  const [userId, setUserId]     = useState('');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'center' | ''>('');
+
+  // Student profile fields
+  const [sFirstName, setSFirstName] = useState('');
+  const [sLastName,  setSLastName]  = useState('');
+  const [sUniversity, setSUniversity] = useState('');
+  const [sSpecialty,  setSSpecialty]  = useState('');
+  const [sCountry,    setSCountry]    = useState('');
+  const [sPhone,      setSPhone]      = useState('');
+
+  // Center profile fields
+  const [cName,     setCName]     = useState('');
+  const [cLegal,    setCLegal]    = useState('');
+  const [cSiret,    setCSiret]    = useState('');
+  const [cVat,      setCVat]      = useState('');
+  const [cCountry,  setCCountry]  = useState('');
+  const [cRegion,   setCRegion]   = useState('');
+  const [cCity,     setCCity]     = useState('');
+  const [cAddress,  setCAddress]  = useState('');
+  const [cZip,      setCZip]      = useState('');
+  const [cPhone,    setCPhone]    = useState('');
+  const [cWebsite,  setCWebsite]  = useState('');
+  const [cDesc,     setCDesc]     = useState('');
 
   const currentLang = LANGS.find(l => l.code === lang) ?? LANGS[0];
 
@@ -43,19 +111,63 @@ export default function Auth() {
     setLangOpen(false);
   };
 
-  const handle = async () => {
+  // ── Étape 1 : Auth ───────────────────────
+  const handleAuth = async () => {
     if (!email || !password) return;
-    setLoading(true); setError(''); setSuccess('');
+    setLoading(true); setError('');
     try {
       if (mode === 'login') {
         const { error: e } = await supabase.auth.signInWithPassword({ email, password });
         if (e) throw e;
         navigate('/');
       } else {
-        const { error: e } = await supabase.auth.signUp({ email, password });
+        const { data, error: e } = await supabase.auth.signUp({ email, password });
         if (e) throw e;
-        setSuccess(t('auth.verifyEmail'));
+        setUserId(data.user?.id ?? '');
+        setStep('role');
       }
+    } catch (e: any) { setError(e.message); }
+    setLoading(false);
+  };
+
+  // ── Étape 2 : Choix du rôle ────────────────
+  const handleRole = () => {
+    if (!selectedRole) return;
+    setStep(selectedRole === 'student' ? 'profile_student' : 'profile_center');
+  };
+
+  // ── Étape 3 : Profil étudiant ───────────────
+  const handleStudentProfile = async () => {
+    setLoading(true); setError('');
+    try {
+      const { error: e } = await supabase.from('profiles').upsert({
+        id: userId, role: 'student',
+        full_name: `${sFirstName} ${sLastName}`.trim(),
+        first_name: sFirstName, last_name: sLastName,
+        university: sUniversity, specialty: sSpecialty,
+        country: sCountry, phone: sPhone, email,
+      });
+      if (e) throw e;
+      navigate('/');
+    } catch (e: any) { setError(e.message); }
+    setLoading(false);
+  };
+
+  // ── Étape 3 : Profil centre ────────────────
+  const handleCenterProfile = async () => {
+    setLoading(true); setError('');
+    try {
+      const { error: e } = await supabase.from('profiles').upsert({
+        id: userId, role: 'center',
+        clinic_name: cName, full_name: cName,
+        legal_form: cLegal, siret: cSiret, vat_number: cVat,
+        country: cCountry, region: cRegion, city: cCity,
+        address: cAddress, zip_code: cZip,
+        phone: cPhone, website: cWebsite,
+        description: cDesc, email,
+      });
+      if (e) throw e;
+      navigate('/');
     } catch (e: any) { setError(e.message); }
     setLoading(false);
   };
@@ -67,191 +179,209 @@ export default function Auth() {
   ];
 
   const langModal = langOpen ? createPortal(
-    <div dir="ltr" style={{ position:'fixed', inset:0, zIndex:9999,
-      display:'flex', alignItems:'flex-end', justifyContent:'center',
-      background:'rgba(0,0,0,0.4)', backdropFilter:'blur(4px)' }}
-      onClick={() => setLangOpen(false)}>
-      <div dir="ltr" style={{ background:'white', borderRadius:'24px 24px 0 0',
-        width:'100%', maxWidth:'480px', paddingBottom:'env(safe-area-inset-bottom,16px)',
-        animation:'slideUp 0.22s ease' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display:'flex', justifyContent:'center', paddingTop:12, paddingBottom:4 }}>
-          <div style={{ width:40, height:4, borderRadius:2, background:'#e2e8f0' }} />
-        </div>
-        <p style={{ fontWeight:700, fontSize:16, color:'#0f172a', margin:'10px 20px 8px' }}>{t('profile.language')}</p>
+    <div dir="ltr" style={{ position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.4)',backdropFilter:'blur(4px)' }} onClick={() => setLangOpen(false)}>
+      <div dir="ltr" style={{ background:'white',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'480px',paddingBottom:'env(safe-area-inset-bottom,16px)',animation:'slideUp 0.22s ease' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:'flex',justifyContent:'center',paddingTop:12,paddingBottom:4 }}><div style={{ width:40,height:4,borderRadius:2,background:'#e2e8f0' }} /></div>
+        <p style={{ fontWeight:700,fontSize:16,color:'#0f172a',margin:'10px 20px 8px' }}>{t('profile.language')}</p>
         <div style={{ padding:'4px 12px 12px' }}>
           {LANGS.map(({ code, flag, label }) => {
             const active = lang === code;
-            return (
-              <button key={code} onClick={() => changeLang(code)} style={{
-                width:'100%', display:'flex', alignItems:'center', gap:14,
-                padding:'11px 12px', borderRadius:16, border:'none', cursor:'pointer',
-                background: active ? '#eff6ff' : 'transparent', textAlign:'left' }}>
-                <span style={{ fontSize:24, minWidth:32, textAlign:'center' }}>{flag}</span>
-                <span style={{ flex:1, fontSize:15, fontWeight:active?700:500,
-                  color:active?'#1d4ed8':'#334155' }}>{label}</span>
-                {active && (
-                  <span style={{ width:22, height:22, borderRadius:'50%', background:'#1d4ed8',
-                    display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <CheckCircle2 size={12} color="white" />
-                  </span>
-                )}
-              </button>
-            );
+            return <button key={code} onClick={() => changeLang(code)} style={{ width:'100%',display:'flex',alignItems:'center',gap:14,padding:'11px 12px',borderRadius:16,border:'none',cursor:'pointer',background:active?'#eff6ff':'transparent',textAlign:'left' }}>
+              <span style={{ fontSize:24,minWidth:32,textAlign:'center' }}>{flag}</span>
+              <span style={{ flex:1,fontSize:15,fontWeight:active?700:500,color:active?'#1d4ed8':'#334155' }}>{label}</span>
+              {active && <span style={{ width:22,height:22,borderRadius:'50%',background:'#1d4ed8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><CheckCircle2 size={12} color="white" /></span>}
+            </button>;
           })}
         </div>
       </div>
-    </div>,
-    document.body
+    </div>, document.body
   ) : null;
 
-  return (
-    <div dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      style={{ minHeight:'100dvh', display:'flex', flexDirection:'column',
-               background:'#f8fafc', overflowX:'hidden' }}>
+  // ───── TOPBAR (commun) ──────────────────────────
+  const TopBar = () => (
+    <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`env(safe-area-inset-top,0px) 16px 0`,height:'calc(56px + env(safe-area-inset-top,0px))' }}>
+      <button onClick={() => step === 'auth' ? navigate('/') : setStep(step === 'role' ? 'auth' : 'role')}
+        style={{ display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.15)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:14,padding:'7px 12px 7px 8px',cursor:'pointer' }}>
+        {step !== 'auth' ? <ChevronLeft size={16} color="white" /> : <div style={{ width:28,height:28,borderRadius:8,background:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><Stethoscope size={15} color="#1d4ed8" /></div>}
+        <span style={{ fontWeight:800,fontSize:15,color:'white',letterSpacing:'-0.3px' }}>{step !== 'auth' ? 'Retour' : 'SponsoMed'}</span>
+      </button>
+      <button dir="ltr" onClick={() => setLangOpen(true)} style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,0.18)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:14,padding:'7px 12px',cursor:'pointer' }}>
+        <Globe size={15} color="white" />
+        <span style={{ fontSize:20,lineHeight:1 }}>{currentLang.flag}</span>
+      </button>
+    </div>
+  );
 
-      {/* TOP BAR */}
-      <div style={{
-        position:'fixed', top:0, left:0, right:0, zIndex:100,
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:`env(safe-area-inset-top,0px) 16px 0`,
-        height:'calc(56px + env(safe-area-inset-top,0px))',
-      }}>
-        {/* Logo → accueil */}
-        <button onClick={() => navigate('/')} style={{
-          display:'flex', alignItems:'center', gap:8,
-          background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)',
-          border:'1px solid rgba(255,255,255,0.25)',
-          borderRadius:14, padding:'7px 12px 7px 8px', cursor:'pointer',
-        }}>
-          <div style={{ width:28, height:28, borderRadius:8, background:'white',
-            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Stethoscope size={15} color="#1d4ed8" />
-          </div>
-          <span style={{ fontWeight:800, fontSize:15, color:'white', letterSpacing:'-0.3px' }}>SponsoMed</span>
-        </button>
+  const heroGradient = 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #0ea5e9 100%)';
+  const heroPadTop   = 'calc(56px + env(safe-area-inset-top,0px) + 20px)';
 
-        {/* Bouton langue — drapeau seul, pill visible */}
-        <button dir="ltr" onClick={() => setLangOpen(true)} style={{
-          display:'flex', alignItems:'center', gap:6,
-          background:'rgba(255,255,255,0.18)', backdropFilter:'blur(8px)',
-          border:'1px solid rgba(255,255,255,0.3)',
-          borderRadius:14, padding:'7px 12px', cursor:'pointer',
-        }}>
-          <Globe size={15} color="white" />
-          <span style={{ fontSize:20, lineHeight:1 }}>{currentLang.flag}</span>
-        </button>
-      </div>
-
-      {/* HERO */}
-      <div style={{
-        background:'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #0ea5e9 100%)',
-        paddingTop:'calc(56px + env(safe-area-inset-top,0px) + 20px)',
-        paddingBottom:'44px', paddingLeft:'24px', paddingRight:'24px',
-        color:'white', position:'relative', overflow:'hidden', flexShrink:0,
-      }}>
-        <div style={{ position:'absolute', right:'-48px', top:'-48px', width:'180px', height:'180px', borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
-        <div style={{ position:'absolute', left:'-32px', bottom:'-32px', width:'120px', height:'120px', borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
-        <h1 style={{ fontSize:'26px', fontWeight:800, lineHeight:1.2, margin:'0 0 6px', letterSpacing:'-0.5px' }}>
-          {mode === 'login' ? t('auth.welcomeBack') : t('auth.join')}
-        </h1>
-        <p style={{ fontSize:'14px', color:'rgba(255,255,255,0.7)', margin:'0 0 20px' }}>{t('auth.tagline')}</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+  // ══════ ÉTAPE 1 : AUTH ════════════════════════
+  if (step === 'auth') return (
+    <div dir={lang==='ar'?'rtl':'ltr'} style={{ minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#f8fafc',overflowX:'hidden' }}>
+      <TopBar />
+      <div style={{ background:heroGradient,paddingTop:heroPadTop,paddingBottom:44,paddingLeft:24,paddingRight:24,color:'white',position:'relative',overflow:'hidden',flexShrink:0 }}>
+        <div style={{ position:'absolute',right:'-48px',top:'-48px',width:180,height:180,borderRadius:'50%',background:'rgba(255,255,255,0.06)' }} />
+        <h1 style={{ fontSize:26,fontWeight:800,lineHeight:1.2,margin:'0 0 6px',letterSpacing:'-0.5px' }}>{mode==='login' ? t('auth.welcomeBack') : t('auth.join')}</h1>
+        <p style={{ fontSize:14,color:'rgba(255,255,255,0.7)',margin:'0 0 20px' }}>{t('auth.tagline')}</p>
+        <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
           {features.map(({ icon: Icon, label }) => (
-            <div key={Object.values(label)[0]} style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.15)',
-                display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Icon size={14} color="white" />
-              </div>
-              <span style={{ fontSize:13, color:'rgba(255,255,255,0.85)', fontWeight:500 }}>
-                {(label as any)[lang] ?? (label as any)['fr']}
-              </span>
+            <div key={Object.values(label)[0]} style={{ display:'flex',alignItems:'center',gap:10 }}>
+              <div style={{ width:28,height:28,borderRadius:8,background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><Icon size={14} color="white" /></div>
+              <span style={{ fontSize:13,color:'rgba(255,255,255,0.85)',fontWeight:500 }}>{(label as any)[lang]??(label as any)['fr']}</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* FORM */}
-      <div style={{ flex:1, background:'white', borderRadius:'24px 24px 0 0',
-        marginTop:'-16px', padding:'28px 20px 40px',
-        display:'flex', flexDirection:'column', gap:16 }}>
-
-        <div style={{ display:'flex', background:'#f1f5f9', borderRadius:16, padding:4, gap:4 }}>
+      <div style={{ flex:1,background:'white',borderRadius:'24px 24px 0 0',marginTop:'-16px',padding:'28px 20px 40px',display:'flex',flexDirection:'column',gap:16 }}>
+        <div style={{ display:'flex',background:'#f1f5f9',borderRadius:16,padding:4,gap:4 }}>
           {(['login','signup'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(''); setSuccess(''); }}
-              style={{ flex:1, padding:'11px 8px', borderRadius:12, border:'none', cursor:'pointer',
-                fontSize:14, fontWeight:700, transition:'all 0.18s',
-                background: mode===m ? 'white' : 'transparent',
-                color: mode===m ? '#1d4ed8' : '#64748b',
-                boxShadow: mode===m ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
-              {m === 'login' ? t('auth.signIn') : t('auth.signUp')}
+            <button key={m} onClick={() => { setMode(m); setError(''); }}
+              style={{ flex:1,padding:'11px 8px',borderRadius:12,border:'none',cursor:'pointer',fontSize:14,fontWeight:700,transition:'all 0.18s',background:mode===m?'white':'transparent',color:mode===m?'#1d4ed8':'#64748b',boxShadow:mode===m?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
+              {m==='login' ? t('auth.signIn') : t('auth.signUp')}
             </button>
           ))}
         </div>
-
-        {error && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:14, padding:'12px 16px', fontSize:13, color:'#dc2626' }}>{error}</div>}
-        {success && (
-          <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:14,
-            padding:'12px 16px', fontSize:13, color:'#16a34a', display:'flex', alignItems:'flex-start', gap:8 }}>
-            <CheckCircle2 size={16} color="#16a34a" style={{ flexShrink:0, marginTop:1 }} />
-            {success}
-          </div>
-        )}
-
+        {error && <div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:14,padding:'12px 16px',fontSize:13,color:'#dc2626' }}>{error}</div>}
         <div style={{ position:'relative' }}>
-          <div style={{ position:'absolute', left:lang==='ar'?'auto':'14px', right:lang==='ar'?'14px':'auto',
-            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><Mail size={16} color="#94a3b8" /></div>
-          <input type="email" placeholder={t('auth.email')} value={email}
-            onChange={e => setEmail(e.target.value)} autoComplete="email" dir="ltr"
-            style={{ width:'100%', boxSizing:'border-box',
-              padding: lang==='ar' ? '14px 44px 14px 14px' : '14px 14px 14px 44px',
-              borderRadius:14, border:'1.5px solid #e2e8f0',
-              fontSize:15, color:'#0f172a', background:'#f8fafc', outline:'none' }}
-            onFocus={e => e.target.style.borderColor='#1d4ed8'}
-            onBlur={e  => e.target.style.borderColor='#e2e8f0'} />
+          <div style={{ position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',pointerEvents:'none' }}><Mail size={16} color="#94a3b8" /></div>
+          <Field icon={null} placeholder={t('auth.email')} value={email} onChange={(e:any)=>setEmail(e.target.value)} type="email" />
+          <div style={{ position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',pointerEvents:'none' }}><Mail size={16} color="#94a3b8" /></div>
+          <input type="email" placeholder={t('auth.email')} value={email} onChange={e=>setEmail(e.target.value)} dir="ltr"
+            style={{ width:'100%',boxSizing:'border-box',padding:'13px 14px 13px 44px',borderRadius:14,border:'1.5px solid #e2e8f0',fontSize:15,color:'#0f172a',background:'#f8fafc',outline:'none' }}
+            onFocus={e=>e.target.style.borderColor='#1d4ed8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
         </div>
-
         <div style={{ position:'relative' }}>
-          <div style={{ position:'absolute', left:lang==='ar'?'auto':'14px', right:lang==='ar'?'14px':'auto',
-            top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><Lock size={16} color="#94a3b8" /></div>
-          <input type={show?'text':'password'} placeholder={t('auth.password')} value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete={mode==='login'?'current-password':'new-password'}
-            style={{ width:'100%', boxSizing:'border-box', padding:'14px 44px',
-              borderRadius:14, border:'1.5px solid #e2e8f0',
-              fontSize:15, color:'#0f172a', background:'#f8fafc', outline:'none' }}
-            onFocus={e => e.target.style.borderColor='#1d4ed8'}
-            onBlur={e  => e.target.style.borderColor='#e2e8f0'} />
-          <button type="button" onClick={() => setShow(s => !s)}
-            style={{ position:'absolute', right:lang==='ar'?'auto':'14px', left:lang==='ar'?'14px':'auto',
-              top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-            {show ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
+          <div style={{ position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',pointerEvents:'none' }}><Lock size={16} color="#94a3b8" /></div>
+          <input type={show?'text':'password'} placeholder={t('auth.password')} value={password} onChange={e=>setPassword(e.target.value)}
+            style={{ width:'100%',boxSizing:'border-box',padding:'13px 44px',borderRadius:14,border:'1.5px solid #e2e8f0',fontSize:15,color:'#0f172a',background:'#f8fafc',outline:'none' }}
+            onFocus={e=>e.target.style.borderColor='#1d4ed8'} onBlur={e=>e.target.style.borderColor='#e2e8f0'} />
+          <button type="button" onClick={()=>setShow(s=>!s)} style={{ position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',padding:0 }}>
+            {show?<EyeOff size={16} color="#94a3b8" />:<Eye size={16} color="#94a3b8" />}
           </button>
         </div>
-
-        {mode === 'login' && (
-          <div style={{ textAlign: lang==='ar'?'left':'right', marginTop:-8 }}>
-            <button style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#1d4ed8', fontWeight:600 }}>
-              {t('auth.forgotPassword')}
-            </button>
-          </div>
-        )}
-
-        <button onClick={handle} disabled={loading || !email || !password}
-          style={{ width:'100%', padding:15,
-            background: loading||!email||!password ? '#93c5fd' : 'linear-gradient(135deg,#1d4ed8,#0ea5e9)',
-            color:'white', border:'none', borderRadius:16, cursor:'pointer',
-            fontSize:16, fontWeight:700, display:'flex', alignItems:'center',
-            justifyContent:'center', gap:8, boxShadow:'0 4px 16px rgba(29,78,216,0.3)' }}>
-          {loading
-            ? <span style={{ width:20, height:20, border:'2px solid white', borderTopColor:'transparent',
-                borderRadius:'50%', display:'inline-block', animation:'spin 0.7s linear infinite' }} />
-            : <>{mode==='login' ? t('auth.signIn') : t('auth.signUp')} <ArrowRight size={18} /></>}
+        {mode==='login' && <div style={{ textAlign:'right',marginTop:-8 }}><button style={{ background:'none',border:'none',cursor:'pointer',fontSize:13,color:'#1d4ed8',fontWeight:600 }}>{t('auth.forgotPassword')}</button></div>}
+        <button onClick={handleAuth} disabled={loading||!email||!password}
+          style={{ width:'100%',padding:15,background:loading||!email||!password?'#93c5fd':'linear-gradient(135deg,#1d4ed8,#0ea5e9)',color:'white',border:'none',borderRadius:16,cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 4px 16px rgba(29,78,216,0.3)' }}>
+          {loading?<span style={{ width:20,height:20,border:'2px solid white',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin 0.7s linear infinite' }} />:<>{mode==='login'?t('auth.signIn'):t('auth.signUp')} <ArrowRight size={18} /></>}
         </button>
-
-        <p style={{ textAlign:'center', fontSize:12, color:'#94a3b8', margin:0 }}>{t('auth.tagline')}</p>
+        <p style={{ textAlign:'center',fontSize:12,color:'#94a3b8',margin:0 }}>{t('auth.tagline')}</p>
       </div>
+      {langModal}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+    </div>
+  );
 
+  // ══════ ÉTAPE 2 : CHOIX DU RÔLE ═════════════════
+  if (step === 'role') return (
+    <div dir={lang==='ar'?'rtl':'ltr'} style={{ minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#f8fafc' }}>
+      <TopBar />
+      <div style={{ background:heroGradient,paddingTop:heroPadTop,paddingBottom:36,paddingLeft:24,paddingRight:24,color:'white',flexShrink:0 }}>
+        <p style={{ fontSize:13,color:'rgba(255,255,255,0.6)',fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',margin:'0 0 8px' }}>Inscription — Étape 1/2</p>
+        <h1 style={{ fontSize:24,fontWeight:800,margin:'0 0 6px' }}>Qui êtes-vous ?</h1>
+        <p style={{ fontSize:14,color:'rgba(255,255,255,0.7)',margin:0 }}>Sélectionnez votre type de compte</p>
+      </div>
+      <div style={{ flex:1,background:'white',borderRadius:'24px 24px 0 0',marginTop:'-16px',padding:'28px 20px 40px',display:'flex',flexDirection:'column',gap:16 }}>
+        {[{ role:'student' as const, emoji:'🎓', title:'Compte Étudiant', desc:'Je suis étudiant en médecine et je cherche un parrainage', color:'#1d4ed8', bg:'#eff6ff', border:'#bfdbfe' },
+          { role:'center' as const,  emoji:'🏥', title:'Centre Médical',   desc:'Je suis un centre de santé et je souhaite parrainer des étudiants', color:'#059669', bg:'#f0fdf4', border:'#bbf7d0' },
+        ].map(({ role, emoji, title, desc, color, bg, border }) => (
+          <button key={role} onClick={() => setSelectedRole(role)}
+            style={{ width:'100%',padding:'20px',borderRadius:20,border:`2px solid ${selectedRole===role ? color : border}`,background:selectedRole===role ? bg : 'white',cursor:'pointer',textAlign:'left',transition:'all 0.18s' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:12 }}>
+              <span style={{ fontSize:36 }}>{emoji}</span>
+              <div style={{ flex:1 }}>
+                <p style={{ fontWeight:700,fontSize:16,color:'#0f172a',margin:'0 0 4px' }}>{title}</p>
+                <p style={{ fontSize:13,color:'#64748b',margin:0,lineHeight:1.4 }}>{desc}</p>
+              </div>
+              <div style={{ width:24,height:24,borderRadius:'50%',border:`2px solid ${selectedRole===role?color:'#cbd5e1'}`,background:selectedRole===role?color:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                {selectedRole===role && <CheckCircle2 size={14} color="white" />}
+              </div>
+            </div>
+          </button>
+        ))}
+        {error && <div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:14,padding:'12px 16px',fontSize:13,color:'#dc2626' }}>{error}</div>}
+        <button onClick={handleRole} disabled={!selectedRole}
+          style={{ width:'100%',padding:15,background:selectedRole?'linear-gradient(135deg,#1d4ed8,#0ea5e9)':'#e2e8f0',color:selectedRole?'white':'#94a3b8',border:'none',borderRadius:16,cursor:selectedRole?'pointer':'default',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:8 }}>
+          Continuer <ArrowRight size={18} />
+        </button>
+      </div>
+      {langModal}
+      <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+    </div>
+  );
+
+  // ══════ ÉTAPE 3a : PROFIL ÉTUDIANT ═════════════
+  if (step === 'profile_student') return (
+    <div dir={lang==='ar'?'rtl':'ltr'} style={{ minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#f8fafc' }}>
+      <TopBar />
+      <div style={{ background:heroGradient,paddingTop:heroPadTop,paddingBottom:36,paddingLeft:24,paddingRight:24,color:'white',flexShrink:0 }}>
+        <p style={{ fontSize:13,color:'rgba(255,255,255,0.6)',fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',margin:'0 0 8px' }}>Inscription — Étape 2/2</p>
+        <h1 style={{ fontSize:24,fontWeight:800,margin:'0 0 4px' }}>🎓 Profil Étudiant</h1>
+        <p style={{ fontSize:14,color:'rgba(255,255,255,0.7)',margin:0 }}>Complétez vos informations</p>
+      </div>
+      <div style={{ flex:1,background:'white',borderRadius:'24px 24px 0 0',marginTop:'-16px',padding:'28px 20px 40px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto' }}>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <Field icon={User} placeholder="Prénom *" value={sFirstName} onChange={(e:any)=>setSFirstName(e.target.value)} />
+          <Field icon={User} placeholder="Nom *" value={sLastName} onChange={(e:any)=>setSLastName(e.target.value)} />
+        </div>
+        <Field icon={GraduationCap} placeholder="Université / école *" value={sUniversity} onChange={(e:any)=>setSUniversity(e.target.value)} />
+        <Field icon={Stethoscope}   placeholder="Spécialité" value={sSpecialty}  onChange={(e:any)=>setSSpecialty(e.target.value)} />
+        <Field icon={MapPin}        placeholder="Pays" value={sCountry}   onChange={(e:any)=>setSCountry(e.target.value)} />
+        <Field icon={Phone}         placeholder="Téléphone" value={sPhone}    onChange={(e:any)=>setSPhone(e.target.value)} type="tel" />
+        {error && <div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:14,padding:'12px 16px',fontSize:13,color:'#dc2626' }}>{error}</div>}
+        <button onClick={handleStudentProfile} disabled={loading||!sFirstName||!sLastName||!sUniversity}
+          style={{ width:'100%',padding:15,background:loading||!sFirstName||!sLastName||!sUniversity?'#93c5fd':'linear-gradient(135deg,#1d4ed8,#0ea5e9)',color:'white',border:'none',borderRadius:16,cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:8 }}>
+          {loading?<span style={{ width:20,height:20,border:'2px solid white',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin 0.7s linear infinite' }} />:<>Créer mon compte <ArrowRight size={18} /></>}
+        </button>
+      </div>
+      {langModal}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+    </div>
+  );
+
+  // ══════ ÉTAPE 3b : PROFIL CENTRE ══════════════
+  return (
+    <div dir={lang==='ar'?'rtl':'ltr'} style={{ minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#f8fafc' }}>
+      <TopBar />
+      <div style={{ background:heroGradient,paddingTop:heroPadTop,paddingBottom:36,paddingLeft:24,paddingRight:24,color:'white',flexShrink:0 }}>
+        <p style={{ fontSize:13,color:'rgba(255,255,255,0.6)',fontWeight:600,textTransform:'uppercase',letterSpacing:'1px',margin:'0 0 8px' }}>Inscription — Étape 2/2</p>
+        <h1 style={{ fontSize:24,fontWeight:800,margin:'0 0 4px' }}>🏥 Centre Médical</h1>
+        <p style={{ fontSize:14,color:'rgba(255,255,255,0.7)',margin:0 }}>Informations de votre établissement</p>
+      </div>
+      <div style={{ flex:1,background:'white',borderRadius:'24px 24px 0 0',marginTop:'-16px',padding:'28px 20px 40px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto' }}>
+
+        <p style={{ fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'1px',margin:0 }}>🏥 Informations générales</p>
+        <Field icon={Building2} placeholder="Nom du centre *" value={cName}  onChange={(e:any)=>setCName(e.target.value)} />
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <Field icon={FileText} placeholder="Forme juridique" value={cLegal}  onChange={(e:any)=>setCLegal(e.target.value)} />
+          <Field icon={FileText} placeholder="SIRET"            value={cSiret}  onChange={(e:any)=>setCSiret(e.target.value)} />
+        </div>
+        <Field icon={FileText} placeholder="N° TVA" value={cVat} onChange={(e:any)=>setCVat(e.target.value)} />
+
+        <p style={{ fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'1px',margin:'4px 0 0' }}>📍 Localisation</p>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <Field icon={MapPin} placeholder="Pays *"   value={cCountry} onChange={(e:any)=>setCCountry(e.target.value)} />
+          <Field icon={MapPin} placeholder="Région"   value={cRegion}  onChange={(e:any)=>setCRegion(e.target.value)} />
+        </div>
+        <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:10 }}>
+          <Field icon={MapPin} placeholder="Ville *"        value={cCity}    onChange={(e:any)=>setCCity(e.target.value)} />
+          <Field icon={MapPin} placeholder="Code postal"    value={cZip}     onChange={(e:any)=>setCZip(e.target.value)} />
+        </div>
+        <Field icon={MapPin} placeholder="Adresse" value={cAddress} onChange={(e:any)=>setCAddress(e.target.value)} />
+
+        <p style={{ fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'1px',margin:'4px 0 0' }}>📞 Contact</p>
+        <Field icon={Phone}  placeholder="Téléphone" value={cPhone}   onChange={(e:any)=>setCPhone(e.target.value)} type="tel" />
+        <Field icon={Globe2} placeholder="Site web"   value={cWebsite} onChange={(e:any)=>setCWebsite(e.target.value)} type="url" />
+
+        <p style={{ fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'1px',margin:'4px 0 0' }}>📝 Description</p>
+        <TextArea placeholder="Décrivez votre centre médical..." value={cDesc} onChange={(e:any)=>setCDesc(e.target.value)} />
+
+        {error && <div style={{ background:'#fef2f2',border:'1px solid #fecaca',borderRadius:14,padding:'12px 16px',fontSize:13,color:'#dc2626' }}>{error}</div>}
+
+        <button onClick={handleCenterProfile} disabled={loading||!cName||!cCountry||!cCity}
+          style={{ width:'100%',padding:15,background:loading||!cName||!cCountry||!cCity?'#93c5fd':'linear-gradient(135deg,#059669,#0ea5e9)',color:'white',border:'none',borderRadius:16,cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:8,boxShadow:'0 4px 16px rgba(5,150,105,0.3)' }}>
+          {loading?<span style={{ width:20,height:20,border:'2px solid white',borderTopColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'spin 0.7s linear infinite' }} />:<>Créer mon compte 🏥 <ArrowRight size={18} /></>}
+        </button>
+      </div>
       {langModal}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
     </div>
